@@ -15,8 +15,7 @@ class SearchAndRateShipPage extends StatefulWidget {
   const SearchAndRateShipPage({super.key});
 
   @override
-  State<SearchAndRateShipPage> createState() =>
-      _SearchAndRateShipPageState();
+  State<SearchAndRateShipPage> createState() => _SearchAndRateShipPageState();
 }
 
 class _SearchAndRateShipPageState extends State<SearchAndRateShipPage>
@@ -28,67 +27,108 @@ class _SearchAndRateShipPageState extends State<SearchAndRateShipPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
   }
-
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 12),
-            const Text(
-              'Avaliação de Navios',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Pesquise avaliações ou registre sua experiência',
-              style: TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
-
-            /// Abas
-            Container(
-              height: 44,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: Colors.indigo,
-                  borderRadius: BorderRadius.circular(20),
+Widget build(BuildContext context) {
+  return SafeArea(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// -----------------------------
+        /// TOPO (clean, sem bloco azul)
+        /// -----------------------------
+        Container(
+          width: double.infinity,
+          color: const Color(0xFFF7F7F9), // fundo leve para evitar "gap branco"
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Avaliação de Navios',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
+                  color: Colors.black,
                 ),
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.black87,
-                tabs: const [
-                  Tab(text: 'Buscar'),
-                  Tab(text: 'Avaliar'),
-                ],
               ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: const [
-                  SearchShipTab(),
-                  RateShipTab(),
-                ],
+              const SizedBox(height: 6),
+              const Text(
+                'Pesquise avaliações ou registre sua experiência',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                  height: 1.3,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+
+              /// Abas (segment control bem proporcional)
+              Container(
+                height: 42,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE9EAEE),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  indicator: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  labelColor: const Color(0xFF2F3E9E),
+                  unselectedLabelColor: Colors.black87,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  tabs: const [
+                    Tab(text: 'Buscar'),
+                    Tab(text: 'Avaliar'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+
+        /// Linha sutil para “fechar” o topo (some com o gap)
+        const Divider(height: 1, thickness: 1, color: Color(0xFFE6E6EA)),
+
+        /// -----------------------------
+        /// CONTEÚDO DAS ABAS
+        /// -----------------------------
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: const [
+              SearchShipTab(),
+              RateShipTab(),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
+
+
+  }
+
 
 /// ---------------------------------------------------------------------------
 /// ABA DE BUSCA DE NAVIOS
@@ -121,8 +161,7 @@ class _SearchShipTabState extends State<SearchShipTab> {
     final termo = texto.toLowerCase().trim();
     final Map<String, QueryDocumentSnapshot> resultado = {};
 
-    final snapshot =
-        await FirebaseFirestore.instance.collection('navios').get();
+    final snapshot = await FirebaseFirestore.instance.collection('navios').get();
 
     for (final doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
@@ -149,11 +188,9 @@ class _SearchShipTabState extends State<SearchShipTab> {
 
     lista.sort((a, b) {
       final Timestamp aData =
-          (a.data() as Map)['dataDesembarque'] ??
-              (a.data() as Map)['data'];
+          (a.data() as Map)['dataDesembarque'] ?? (a.data() as Map)['data'];
       final Timestamp bData =
-          (b.data() as Map)['dataDesembarque'] ??
-              (b.data() as Map)['data'];
+          (b.data() as Map)['dataDesembarque'] ?? (b.data() as Map)['data'];
       return bData.compareTo(aData);
     });
 
@@ -241,35 +278,48 @@ class _SearchShipTabState extends State<SearchShipTab> {
 
         const SizedBox(height: 12),
 
-        /// Avaliações do navio selecionado
-        /// Avaliações do navio selecionado
-if (navioSelecionado != null)
-  Expanded(
-    child: ListView(
-      children: [
-        _ShipSummaryCard(ship: navioSelecionado!),
-
-        if (avaliacoes != null && avaliacoes!.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const Text(
-            'Avaliações',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _RatingsList(ratings: avaliacoes!),
-        ],
-      ],
+        /// IMAGEM DE ESTADO INICIAL
+        if (navioSelecionado == null && sugestoes.isEmpty)
+          Expanded(
+  child: Opacity(
+    opacity: 0.95,
+    child: SizedBox.expand(
+      child: Image.asset(
+        'assets/images/navio4.png',
+        fit: BoxFit.cover,
+      ),
     ),
   ),
+),
 
 
+        /// Avaliações do navio selecionado
+        if (navioSelecionado != null)
+          Expanded(
+            child: ListView(
+              children: [
+                _ShipSummaryCard(ship: navioSelecionado!),
+
+                if (avaliacoes != null && avaliacoes!.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Avaliações',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _RatingsList(ratings: avaliacoes!),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }
 }
+
 
 /// ---------------------------------------------------------------------------
 /// LISTA DE AVALIAÇÕES
@@ -311,8 +361,7 @@ class _RatingsList extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ListTile(
             leading: const Icon(Icons.person, color: Colors.indigo),
             title: Text(
@@ -428,14 +477,12 @@ class _ShipSummaryCard extends StatelessWidget {
                   _item(Icons.groups, 'Tripulação',
                       info['nacionalidadeTripulacao']),
                 if (info['numeroCabines'] != null)
-                  _item(Icons.bed, 'Cabines',
-                      info['numeroCabines'].toString()),
+                  _item(Icons.bed, 'Cabines', info['numeroCabines'].toString()),
                 if (info['frigobar'] != null)
                   _item(Icons.local_drink, 'Frigobar',
                       info['frigobar'] ? 'Sim' : 'Não'),
                 if (info['pia'] != null)
-                  _item(Icons.wash, 'Pia',
-                      info['pia'] ? 'Sim' : 'Não'),
+                  _item(Icons.wash, 'Pia', info['pia'] ? 'Sim' : 'Não'),
               ],
             ),
 
@@ -491,19 +538,104 @@ class RateShipTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.rate_review),
-        label: const Text('Avaliar um navio'),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const AddRatingPage(imo: ''),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        /// -----------------------------
+        /// IMAGEM DE FUNDO
+        /// -----------------------------
+        Image.asset(
+          'assets/images/navio2.png',
+          fit: BoxFit.cover,
+        ),
+
+        /// -----------------------------
+        /// OVERLAY ESCURO (legibilidade)
+        /// -----------------------------
+        Container(
+          color: Colors.black.withOpacity(0.45),
+        ),
+
+        /// -----------------------------
+        /// CONTEÚDO CENTRAL
+        /// -----------------------------
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Nova Avaliação de Navio',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                const Text(
+                  'Registre sua avaliação técnica de forma rápida e segura',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                /// -----------------------------
+                /// BOTÃO PROFISSIONAL
+                /// -----------------------------
+                SizedBox(
+                  width: 240,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2F3E9E),
+                      foregroundColor: Colors.white,
+                      elevation: 3,
+                      shadowColor: Colors.black.withOpacity(0.25),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddRatingPage(imo: ''),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.assignment_turned_in_outlined, size: 18),
+                        SizedBox(width: 10),
+                        Text(
+                          'Iniciar avaliação',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }

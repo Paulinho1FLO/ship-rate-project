@@ -8,16 +8,6 @@ import '../suggestions/suggestion_page.dart';
 import '../ships/my_ratings_page.dart';
 
 /// ---------------------------------------------------------------------------
-/// INFORMAÇÕES DE VERSÃO LOCAL DO APLICATIVO
-/// ---------------------------------------------------------------------------
-/// • [kAppVersionCode] → usado para comparação com versão remota (Firestore)
-/// • [kAppVersionLabel] → exibido no rodapé do app
-/// • [kAppChannelLabel] → identifica canal (BETA / PROD / etc.)
-const int kAppVersionCode = 2;
-const String kAppVersionLabel = '1.1.0';
-const String kAppChannelLabel = 'VERSÃO BETA';
-
-/// ---------------------------------------------------------------------------
 /// TELA PRINCIPAL (HOME) DO APLICATIVO
 /// ---------------------------------------------------------------------------
 /// Responsável por:
@@ -37,13 +27,11 @@ class MainScreen extends StatefulWidget {
 /// ---------------------------------------------------------------------------
 /// Implementa [WidgetsBindingObserver] para escutar eventos
 /// de ciclo de vida do app (ex: app voltou para foreground)
-class _MainScreenState extends State<MainScreen>
-    with WidgetsBindingObserver {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// Indica se o banner de atualização deve ser exibido
   bool _showUpdateBanner = false;
 
   /// Versão remota obtida do Firestore
-  int _remoteVersionCode = kAppVersionCode;
 
   /// Chave usada para forçar rebuild completo do body
   Key _rebuildKey = UniqueKey();
@@ -84,15 +72,12 @@ class _MainScreenState extends State<MainScreen>
   /// • Força rebuild completo da árvore de widgets
   /// • Revalida versão remota do app
   Future<void> _forceRefresh() async {
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    _rebuildKey = UniqueKey();
-  });
-}
-
-
-  
+    setState(() {
+      _rebuildKey = UniqueKey();
+    });
+  }
 
   /// -------------------------------------------------------------------------
   /// LOGOUT DO USUÁRIO
@@ -120,32 +105,12 @@ class _MainScreenState extends State<MainScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       color: Colors.amber.shade700,
-      child: Text(
-        'Nova atualização disponível (v$_remoteVersionCode).\n'
+      child: const Text(
+        'Nova atualização disponível.\n'
         'Feche o app e abra novamente para aplicar.',
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.black,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  /// -------------------------------------------------------------------------
-  /// RODAPÉ COM INFORMAÇÕES DE VERSÃO
-  /// -------------------------------------------------------------------------
-  Widget _buildVersionFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      color: Colors.grey.shade200,
-      child: Text(
-        '$kAppChannelLabel • v$kAppVersionLabel',
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 12,
-          letterSpacing: 0.7,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -179,9 +144,16 @@ class _MainScreenState extends State<MainScreen>
               /// HEADER
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 decoration: const BoxDecoration(
-                  color: Colors.indigo,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF3F51B5),
+                      Color(0xFF2F3E9E),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.only(
                     bottomRight: Radius.circular(24),
                   ),
@@ -189,21 +161,28 @@ class _MainScreenState extends State<MainScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    Icon(Icons.directions_boat,
-                        size: 48, color: Colors.white),
-                    SizedBox(height: 12),
+                    Icon(
+                      Icons.directions_boat_filled,
+                      size: 48,
+                      color: Colors.white,
+                    ),
+                    SizedBox(height: 14),
                     Text(
                       'ShipRate',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 6),
                     Text(
                       'Avaliação profissional de navios',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -245,7 +224,10 @@ class _MainScreenState extends State<MainScreen>
                 },
               ),
 
-              const Divider(),
+              const Divider(
+                height: 32,
+                thickness: 1,
+              ),
 
               /// LOGOUT
               _drawerItem(
@@ -268,7 +250,6 @@ class _MainScreenState extends State<MainScreen>
           children: [
             _buildUpdateBanner(),
             const Expanded(child: SearchAndRateShipPage()),
-            _buildVersionFooter(),
           ],
         ),
       ),

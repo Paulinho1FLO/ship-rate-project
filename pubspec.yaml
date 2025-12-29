@@ -35,3 +35,5 @@ flutter:
 
   assets:
     - assets/images/navio.jpg
+    - assets/images/navio2.png
+    - assets/images/navio4.png
