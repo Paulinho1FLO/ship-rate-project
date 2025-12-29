@@ -61,7 +61,9 @@ class _MyRatingsPageState extends State<MyRatingsPage> {
             await navio.reference.collection('avaliacoes').get();
 
         for (final avaliacao in avaliacoesSnapshot.docs) {
-          final data = avaliacao.data() as Map<String, dynamic>;
+          final data = avaliacao.data();
+
+
 
           final usuarioId = data['usuarioId'];
           final nomeGuerraAvaliacao = data['nomeGuerra'];

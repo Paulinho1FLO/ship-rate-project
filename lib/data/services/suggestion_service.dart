@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// Serviço responsável pelo envio e registro de sugestões no Firestore.
 ///
@@ -41,7 +42,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// else showError();
 /// ```
 class SugestaoService {
-
   /// Envia uma sugestão para o Firestore.
   ///
   /// Parâmetros obrigatórios:
@@ -58,17 +58,17 @@ class SugestaoService {
     required String mensagem,
   }) async {
     try {
-      await FirebaseFirestore.instance.collection("sugestoes").add({
-        "email": email,
-        "titulo": titulo,
-        "mensagem": mensagem,
-        "createdAt": FieldValue.serverTimestamp(),
+      await FirebaseFirestore.instance.collection('sugestoes').add({
+        'email': email,
+        'titulo': titulo,
+        'mensagem': mensagem,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       return true;
     } catch (e) {
       // Log simples para depuração (não quebra a UI)
-      print("Erro ao salvar sugestão: $e");
+      debugPrint('Erro ao salvar sugestão: $e');
       return false;
     }
   }

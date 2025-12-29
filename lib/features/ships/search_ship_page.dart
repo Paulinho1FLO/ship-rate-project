@@ -164,9 +164,10 @@ class _SearchShipTabState extends State<SearchShipTab> {
     final snapshot = await FirebaseFirestore.instance.collection('navios').get();
 
     for (final doc in snapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final nome = (data['nome'] ?? '').toString().toLowerCase();
-      final imo = (data['imo'] ?? '').toString().toLowerCase();
+  final data = doc.data();
+  final nome = (data['nome'] as String? ?? '').toLowerCase();
+  final imo  = (data['imo'] as String? ?? '').toLowerCase();
+
 
       if (nome.contains(termo) || (imo.isNotEmpty && imo.contains(termo))) {
         resultado[doc.id] = doc;
@@ -553,7 +554,7 @@ class RateShipTab extends StatelessWidget {
         /// OVERLAY ESCURO (legibilidade)
         /// -----------------------------
         Container(
-          color: Colors.black.withOpacity(0.45),
+          color: Colors.black.withAlpha(115),
         ),
 
         /// -----------------------------
@@ -601,7 +602,7 @@ class RateShipTab extends StatelessWidget {
                       backgroundColor: const Color(0xFF2F3E9E),
                       foregroundColor: Colors.white,
                       elevation: 3,
-                      shadowColor: Colors.black.withOpacity(0.25),
+                      shadowColor: Colors.black.withAlpha(64),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../auth/login_page.dart';
 import '../ships/search_ship_page.dart';
 import 'home_controller.dart';

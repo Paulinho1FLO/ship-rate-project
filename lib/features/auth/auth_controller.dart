@@ -21,7 +21,7 @@ import 'package:flutter/foundation.dart';
 ///  1) Usuário se registra via [register]
 ///  2) Dados extras são persistidos em `usuarios/{uid}`
 ///  3) Sessão é mantida automaticamente pelo Firebase
-///  4) UI reage via StreamBuilder(AuthGate)
+///  4) UI reage via `StreamBuilder<AuthGate>`
 ///
 /// Tratamento de erros:
 /// --------------------
@@ -30,7 +30,7 @@ import 'package:flutter/foundation.dart';
 /// • No login, diferentes códigos de erro são normalizados:
 ///     - invalid-email
 ///     - wrong-password / invalid-credential
-///     - id user not found
+///     - user-not-found
 ///     - too-many-requests
 ///
 /// Segurança e validação:
@@ -83,7 +83,6 @@ class AuthController {
         password: password,
       );
 
-      // salva dados extras no Firestore
       await _firestore
           .collection('usuarios')
           .doc(userCredential.user!.uid)
@@ -109,7 +108,7 @@ class AuthController {
   ///   too-many-requests → rate limit
   ///
   /// Retorna:
-  ///   • Future<void>
+  ///   • `Future<void>`
   ///   • Lança [AuthException] em caso de falha
   Future<void> login({
     required String email,
@@ -125,7 +124,6 @@ class AuthController {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      // log opcional para debug
       debugPrint('FirebaseAuth login error: ${e.code} - ${e.message}');
 
       switch (e.code) {
@@ -162,7 +160,7 @@ class AuthController {
   ///   • [email] — deve corresponder a uma conta existente.
   ///
   /// Fluxo:
-  ///   − dispara o fluxo automátido do Firebase
+  ///   − dispara o fluxo automático do Firebase
   ///   − depende do template configurado no console
   ///
   /// Exceções:
