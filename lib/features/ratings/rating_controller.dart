@@ -1,11 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// ---------------------------------------------------------------------------
+/// RATING CONTROLLER
+/// ---------------------------------------------------------------------------
+/// Responsável por:
+/// • Criar e salvar avaliações
+/// • Criar navio caso não exista
+/// • Normalizar dados enviados pelo formulário
+/// • Recalcular médias agregadas do navio
+///
+/// ⚠️ NÃO contém lógica de UI
+/// ⚠️ NÃO depende de Widgets
 class RatingController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// ORDEM OFICIAL DOS ITENS
+  /// Ordem oficial dos itens avaliados
+  /// ⚠️ NÃO alterar sem migrar dados antigos
   static const List<String> _itensAvaliacao = [
     'Dispositivo de Embarque/Desembarque',
     'Temperatura da Cabine',
@@ -16,12 +28,12 @@ class RatingController {
     'Relacionamento com comandante/tripulação',
   ];
 
-  /// --------------------------------------------------------------------------
-  /// Lista de navios (autocomplete / busca)
-  /// --------------------------------------------------------------------------
+  /// -------------------------------------------------------------------------
+  /// LISTAR NAVIOS (AUTOCOMPLETE / BUSCA)
+  /// -------------------------------------------------------------------------
+  /// Retorna nomes e IMOs únicos
   Future<List<String>> carregarNavios() async {
     final snapshot = await _firestore.collection('navios').get();
-
     final nomes = <String>{};
 
     for (final doc in snapshot.docs) {
@@ -36,9 +48,14 @@ class RatingController {
     return nomes.toList();
   }
 
-  /// --------------------------------------------------------------------------
-  /// Salvar avaliação
-  /// --------------------------------------------------------------------------
+  /// -------------------------------------------------------------------------
+  /// SALVAR AVALIAÇÃO
+  /// -------------------------------------------------------------------------
+  /// • Busca navio por IMO (prioridade) ou nome
+  /// • Cria navio se não existir
+  /// • Salva avaliação com timestamp do servidor
+  /// • Atualiza informações do navio
+  /// • Recalcula médias
   Future<void> salvarAvaliacao({
     required String nomeNavio,
     required String imoInicial,
@@ -58,12 +75,8 @@ class RatingController {
     final nomeNormalizado = nomeNavio.trim();
     final imoNormalizado = imoInicial.trim();
 
-    if (nomeNormalizado.isEmpty && imoNormalizado.isEmpty) {
-      throw Exception('Nome ou IMO do navio é obrigatório');
-    }
-
     /// ----------------------------------------------------------
-    /// 🔍 BUSCA DO NAVIO (IMO > NOME)
+    /// BUSCAR NAVIO (IMO > NOME)
     /// ----------------------------------------------------------
     QuerySnapshot<Map<String, dynamic>> query;
 
@@ -84,8 +97,8 @@ class RatingController {
     if (query.docs.isNotEmpty) {
       navioRef = query.docs.first.reference;
     } else {
+      /// Cria navio caso não exista
       navioRef = naviosRef.doc();
-
       await navioRef.set({
         'nome': nomeNormalizado,
         'imo': imoNormalizado.isNotEmpty ? imoNormalizado : null,
@@ -95,14 +108,14 @@ class RatingController {
     }
 
     /// ----------------------------------------------------------
-    /// Nome de guerra
+    /// NOME DE GUERRA DO PRÁTICO
     /// ----------------------------------------------------------
     final userSnapshot =
         await _firestore.collection('usuarios').doc(usuarioId).get();
     final nomeGuerra = userSnapshot.data()?['nomeGuerra'] ?? 'Prático';
 
     /// ----------------------------------------------------------
-    /// Normalizar itens (compatível com versões antigas)
+    /// NORMALIZA ITENS DE AVALIAÇÃO
     /// ----------------------------------------------------------
     final itensNormalizados = {
       for (final item in _itensAvaliacao)
@@ -113,7 +126,7 @@ class RatingController {
     };
 
     /// ----------------------------------------------------------
-    /// Normalizar infoNavio
+    /// NORMALIZA INFO DO NAVIO
     /// ----------------------------------------------------------
     final infoFinal = <String, dynamic>{};
 
@@ -139,20 +152,25 @@ class RatingController {
     }
 
     /// ----------------------------------------------------------
-    /// Salvar avaliação
+    /// SALVAR AVALIAÇÃO
     /// ----------------------------------------------------------
     await navioRef.collection('avaliacoes').add({
       'usuarioId': usuarioId,
       'nomeGuerra': nomeGuerra,
+
+      /// Data informada pelo usuário
       'dataDesembarque': Timestamp.fromDate(dataDesembarque),
+
+      /// 🔒 Timestamp oficial da avaliação (SERVER)
+      'createdAt': FieldValue.serverTimestamp(),
+
       'tipoCabine': tipoCabine,
       'observacaoGeral': observacaoGeral,
       'infoNavio': infoFinal,
       'itens': itensNormalizados,
-      'data': Timestamp.now(),
     });
 
-    /// Atualizar info resumida do navio
+    /// Atualiza info consolidada do navio
     if (infoFinal.isNotEmpty) {
       await navioRef.set(
         {'info': infoFinal},
@@ -160,14 +178,16 @@ class RatingController {
       );
     }
 
+    /// Recalcular médias
     await _atualizarMedias(navioRef);
   }
 
-  /// --------------------------------------------------------------------------
-  /// Recalcular médias
-  /// --------------------------------------------------------------------------
+  /// -------------------------------------------------------------------------
+  /// RECALCULAR MÉDIAS DO NAVIO
+  /// -------------------------------------------------------------------------
   Future<void> _atualizarMedias(
-      DocumentReference<Map<String, dynamic>> navioRef) async {
+    DocumentReference<Map<String, dynamic>> navioRef,
+  ) async {
     final snapshot = await navioRef.collection('avaliacoes').get();
     if (snapshot.docs.isEmpty) return;
 
@@ -192,6 +212,7 @@ class RatingController {
     }
 
     final medias = <String, String>{};
+
     for (final item in _itensAvaliacao) {
       if (count[item]! > 0) {
         medias[_mediaKey(item)] =
@@ -202,13 +223,15 @@ class RatingController {
     await navioRef.update({'medias': medias});
   }
 
-  /// --------------------------------------------------------------------------
-  /// Helpers
-  /// --------------------------------------------------------------------------
-  double _toDouble(dynamic v) {
-    if (v == null) return 0.0;
-    if (v is num) return v.toDouble();
-    if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+  /// -------------------------------------------------------------------------
+  /// HELPERS
+  /// -------------------------------------------------------------------------
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value.replaceAll(',', '.')) ?? 0.0;
+    }
     return 0.0;
   }
 

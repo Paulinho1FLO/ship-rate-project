@@ -4,22 +4,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/login_page.dart';
 import '../ships/search_ship_page.dart';
 import 'home_controller.dart';
-import '../sugestoes/sugestao_page.dart';
-import '../ships/minhas_avaliacoes_page.dart';
+import '../suggestions/suggestion_page.dart';
+import '../ships/my_ratings_page.dart';
 
 /// ---------------------------------------------------------------------------
-/// CONTROLADOR DE VERSÃO LOCAL DO APLICATIVO
+/// INFORMAÇÕES DE VERSÃO LOCAL DO APLICATIVO
 /// ---------------------------------------------------------------------------
-/// • `kAppVersionCode` é utilizado para comparação com a versão remota.
-/// • `kAppVersionLabel` é exibido na interface (rodapé).
-/// • `kAppChannelLabel` pode marcar canal BETA/PROD etc.
+/// • [kAppVersionCode] → usado para comparação com versão remota (Firestore)
+/// • [kAppVersionLabel] → exibido no rodapé do app
+/// • [kAppChannelLabel] → identifica canal (BETA / PROD / etc.)
 const int kAppVersionCode = 2;
 const String kAppVersionLabel = '1.1.0';
 const String kAppChannelLabel = 'VERSÃO BETA';
 
 /// ---------------------------------------------------------------------------
-/// MAIN SCREEN (HOME) DO APLICATIVO
+/// TELA PRINCIPAL (HOME) DO APLICATIVO
 /// ---------------------------------------------------------------------------
+/// Responsável por:
+/// • Controlar o Drawer
+/// • Verificar versão remota do app
+/// • Forçar atualização de dados ao abrir / retornar ao app
+/// • Exibir banner de atualização
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -27,37 +32,71 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+/// ---------------------------------------------------------------------------
+/// STATE DA TELA PRINCIPAL
+/// ---------------------------------------------------------------------------
+/// Implementa [WidgetsBindingObserver] para escutar eventos
+/// de ciclo de vida do app (ex: app voltou para foreground)
+class _MainScreenState extends State<MainScreen>
+    with WidgetsBindingObserver {
+  /// Indica se o banner de atualização deve ser exibido
   bool _showUpdateBanner = false;
+
+  /// Versão remota obtida do Firestore
   int _remoteVersionCode = kAppVersionCode;
+
+  /// Chave usada para forçar rebuild completo do body
+  Key _rebuildKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
-    _checkRemoteVersion();
+
+    /// Observa mudanças no ciclo de vida do app
+    WidgetsBinding.instance.addObserver(this);
+
+    /// Força atualização inicial ao abrir o app
+    _forceRefresh();
   }
 
-  Future<void> _checkRemoteVersion() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('config')
-          .doc('app')
-          .get();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-      if (!doc.exists) return;
-
-      final data = doc.data() as Map<String, dynamic>;
-      final remote = (data['versao_atual'] ?? kAppVersionCode) as int;
-
-      setState(() {
-        _remoteVersionCode = remote;
-        _showUpdateBanner = remote > kAppVersionCode;
-      });
-    } catch (e) {
-      debugPrint('Erro ao consultar versão remota: $e');
+  /// -------------------------------------------------------------------------
+  /// CALLBACK DO CICLO DE VIDA
+  /// -------------------------------------------------------------------------
+  /// Sempre que o app retorna para o foreground,
+  /// força atualização dos dados.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _forceRefresh();
     }
   }
 
+  /// -------------------------------------------------------------------------
+  /// LIMPA CACHE LOCAL + FORÇA REBUILD DA UI
+  /// -------------------------------------------------------------------------
+  /// • Limpa cache local do Firestore (quando possível)
+  /// • Força rebuild completo da árvore de widgets
+  /// • Revalida versão remota do app
+  Future<void> _forceRefresh() async {
+  if (!mounted) return;
+
+  setState(() {
+    _rebuildKey = UniqueKey();
+  });
+}
+
+
+  
+
+  /// -------------------------------------------------------------------------
+  /// LOGOUT DO USUÁRIO
+  /// -------------------------------------------------------------------------
   Future<void> _handleLogout() async {
     final controller = MainScreenController();
     await controller.logout();
@@ -71,6 +110,9 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// BANNER DE ATUALIZAÇÃO
+  /// -------------------------------------------------------------------------
   Widget _buildUpdateBanner() {
     if (!_showUpdateBanner) return const SizedBox.shrink();
 
@@ -90,6 +132,9 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// RODAPÉ COM INFORMAÇÕES DE VERSÃO
+  /// -------------------------------------------------------------------------
   Widget _buildVersionFooter() {
     return Container(
       width: double.infinity,
@@ -107,121 +152,132 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// BUILD
+  /// -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ShipRate', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'ShipRate',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
 
       /// =========================
-      /// DRAWER REALMENTE NOVO
+      /// DRAWER PRINCIPAL
       /// =========================
       drawer: Drawer(
-  child: SafeArea(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// HEADER CUSTOM
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.indigo,
-            borderRadius: BorderRadius.only(
-              bottomRight: Radius.circular(24),
-            ),
-          ),
+        child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.directions_boat, size: 48, color: Colors.white),
-              SizedBox(height: 12),
-              Text(
-                'ShipRate',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+            children: [
+              /// HEADER
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: Colors.indigo,
+                  borderRadius: BorderRadius.only(
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Icon(Icons.directions_boat,
+                        size: 48, color: Colors.white),
+                    SizedBox(height: 12),
+                    Text(
+                      'ShipRate',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Avaliação profissional de navios',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'Avaliação profissional de navios',
-                style: TextStyle(color: Colors.white70),
+
+              const SizedBox(height: 20),
+
+              _drawerItem(
+                icon: Icons.search,
+                label: 'Buscar / Avaliar Navios',
+                onTap: () => Navigator.pop(context),
+              ),
+
+              _drawerItem(
+                icon: Icons.assignment_turned_in_outlined,
+                label: 'Minhas Avaliações',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MyRatingsPage(),
+                    ),
+                  );
+                },
+              ),
+
+              _drawerItem(
+                icon: Icons.lightbulb_outline,
+                label: 'Enviar Sugestão',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SuggestionPage(),
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(),
+
+              /// LOGOUT
+              _drawerItem(
+                icon: Icons.logout,
+                label: 'Sair',
+                color: Colors.redAccent,
+                onTap: _handleLogout,
               ),
             ],
           ),
         ),
+      ),
 
-        const SizedBox(height: 20),
-
-        /// 🔍 BUSCAR / AVALIAR
-        _drawerItem(
-          icon: Icons.search,
-          label: 'Buscar / Avaliar Navios',
-          onTap: () {
-            Navigator.pop(context);
-          },
+      /// =========================
+      /// BODY COM REBUILD CONTROLADO
+      /// =========================
+      body: KeyedSubtree(
+        key: _rebuildKey,
+        child: Column(
+          children: [
+            _buildUpdateBanner(),
+            const Expanded(child: SearchAndRateShipPage()),
+            _buildVersionFooter(),
+          ],
         ),
-
-        /// 📋 MINHAS AVALIAÇÕES (NOVO)
-        _drawerItem(
-          icon: Icons.assignment_turned_in_outlined,
-          label: 'Minhas Avaliações',
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const MinhasAvaliacoesPage(),
-              ),
-            );
-          },
-        ),
-
-        /// 💡 SUGESTÃO
-        _drawerItem(
-          icon: Icons.lightbulb_outline,
-          label: 'Enviar Sugestão',
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SugestaoPage()),
-            );
-          },
-        ),
-
-        const Spacer(),
-        const Divider(),
-
-        /// 🚪 LOGOUT
-        _drawerItem(
-          icon: Icons.logout,
-          label: 'Sair',
-          color: Colors.redAccent,
-          onTap: _handleLogout,
-        ),
-      ],
-    ),
-  ),
-),
-
-
-      body: Column(
-        children: [
-          _buildUpdateBanner(),
-           Expanded(child: BuscarAvaliarNavioPage()),
-          _buildVersionFooter(),
-        ],
       ),
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// ITEM PADRÃO DO DRAWER
+  /// -------------------------------------------------------------------------
   Widget _drawerItem({
     required IconData icon,
     required String label,

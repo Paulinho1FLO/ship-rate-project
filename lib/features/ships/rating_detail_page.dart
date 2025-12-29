@@ -1,32 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class AvaliacaoDetalhePage extends StatelessWidget {
-  final QueryDocumentSnapshot avaliacao;
+/// ---------------------------------------------------------------------------
+/// RATING DETAIL PAGE
+/// ---------------------------------------------------------------------------
+/// Exibe todos os detalhes de uma avaliação:
+/// • Dados do navio
+/// • Datas
+/// • Informações da cabine
+/// • Avaliações por categoria
+/// • Observações gerais
+///
+/// ⚠️ Página SOMENTE de leitura
+/// ⚠️ Não altera dados
+class RatingDetailPage extends StatelessWidget {
+  final QueryDocumentSnapshot rating;
 
-  const AvaliacaoDetalhePage({
+  const RatingDetailPage({
     super.key,
-    required this.avaliacao,
+    required this.rating,
   });
 
-  String _formatarData(Timestamp ts) {
-    final d = ts.toDate();
-    return '${d.day.toString().padLeft(2, '0')}/'
-        '${d.month.toString().padLeft(2, '0')}/${d.year}';
+  /// Formata Timestamp para dd/MM/yyyy
+  String _formatarData(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = avaliacao.data() as Map<String, dynamic>;
+    final Map<String, dynamic> data =
+        rating.data() as Map<String, dynamic>;
 
     final String nomePratico = data['nomeGuerra'] ?? 'Prático';
-    final Timestamp? tsAvaliacao = data['data'];
-    final Timestamp? tsDesembarque = data['dataDesembarque'];
+    final Timestamp? dataAvaliacao = data['data'];
+    final Timestamp? dataDesembarque = data['dataDesembarque'];
     final String tipoCabine = data['tipoCabine'] ?? '';
-    final String observacaoGeral =
+    final String observacoesGerais =
         (data['observacaoGeral'] ?? '').toString();
 
-    final Map<String, dynamic> itens =
+    final Map<String, dynamic> itensAvaliacao =
         Map<String, dynamic>.from(data['itens'] ?? {});
 
     final Map<String, dynamic> infoNavio =
@@ -34,7 +48,7 @@ class AvaliacaoDetalhePage extends StatelessWidget {
 
     /// Documento pai (navio)
     final DocumentReference navioRef =
-        avaliacao.reference.parent.parent!;
+        rating.reference.parent.parent!;
 
     return FutureBuilder<DocumentSnapshot>(
       future: navioRef.get(),
@@ -47,11 +61,13 @@ class AvaliacaoDetalhePage extends StatelessWidget {
 
         if (snapshot.hasError) {
           return const Scaffold(
-            body: Center(child: Text('Erro ao carregar dados do navio')),
+            body: Center(
+              child: Text('Erro ao carregar dados do navio'),
+            ),
           );
         }
 
-        final navioData =
+        final Map<String, dynamic>? navioData =
             snapshot.data?.data() as Map<String, dynamic>?;
 
         final String nomeNavio = navioData?['nome'] ?? 'Navio';
@@ -59,7 +75,7 @@ class AvaliacaoDetalhePage extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Detalhe da Avaliação'),
+            title: const Text('Detalhes da Avaliação'),
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             centerTitle: true,
@@ -88,22 +104,27 @@ class AvaliacaoDetalhePage extends StatelessWidget {
                       if (imo != null && imo.isNotEmpty)
                         Text('IMO: $imo'),
 
-                      if (tsAvaliacao != null)
+                      if (dataAvaliacao != null)
                         Text(
-                          'Avaliado em: ${_formatarData(tsAvaliacao)}',
-                          style: const TextStyle(color: Colors.black54),
+                          'Avaliado em: ${_formatarData(dataAvaliacao)}',
+                          style: const TextStyle(
+                            color: Colors.black54,
+                          ),
                         ),
 
-                      if (tsDesembarque != null)
+                      if (dataDesembarque != null)
                         Text(
-                          'Data de desembarque: ${_formatarData(tsDesembarque)}',
-                          style: const TextStyle(color: Colors.black54),
+                          'Data de desembarque: ${_formatarData(dataDesembarque)}',
+                          style: const TextStyle(
+                            color: Colors.black54,
+                          ),
                         ),
 
                       if (tipoCabine.isNotEmpty)
                         Text('Tipo da cabine: $tipoCabine'),
 
                       const SizedBox(height: 6),
+
                       Text(
                         'Prático: $nomePratico',
                         style: const TextStyle(
@@ -116,7 +137,7 @@ class AvaliacaoDetalhePage extends StatelessWidget {
                 ),
               ),
 
-              /// ================= INFO DO NAVIO =================
+              /// ================= INFORMAÇÕES DO NAVIO =================
               if (infoNavio.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Card(
@@ -137,22 +158,26 @@ class AvaliacaoDetalhePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
+
                         if (infoNavio['nacionalidadeTripulacao'] != null)
                           _infoLinha(
                             'Tripulação',
                             infoNavio['nacionalidadeTripulacao'],
                           ),
+
                         if (infoNavio['numeroCabines'] != null &&
                             infoNavio['numeroCabines'] > 0)
                           _infoLinha(
                             'Cabines',
                             infoNavio['numeroCabines'].toString(),
                           ),
+
                         if (infoNavio['frigobar'] != null)
                           _infoLinha(
                             'Frigobar',
                             infoNavio['frigobar'] ? 'Sim' : 'Não',
                           ),
+
                         if (infoNavio['pia'] != null)
                           _infoLinha(
                             'Pia',
@@ -165,7 +190,7 @@ class AvaliacaoDetalhePage extends StatelessWidget {
               ],
 
               /// ================= OBSERVAÇÕES GERAIS =================
-              if (observacaoGeral.isNotEmpty) ...[
+              if (observacoesGerais.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Card(
                   shape: RoundedRectangleBorder(
@@ -173,22 +198,19 @@ class AvaliacaoDetalhePage extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Observações gerais',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.indigo,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(observacaoGeral),
-                      ],
+                    child: const Text(
+                      'Observações Gerais',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.indigo,
+                      ),
                     ),
                   ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(observacoesGerais),
                 ),
               ],
 
@@ -196,21 +218,21 @@ class AvaliacaoDetalhePage extends StatelessWidget {
 
               /// ================= CABINE =================
               _secaoTitulo('Cabine'),
-              ..._buildItens(itens, [
+              ..._buildItens(itensAvaliacao, [
                 'Temperatura da Cabine',
                 'Limpeza da Cabine',
               ]),
 
               /// ================= PASSADIÇO =================
               _secaoTitulo('Passadiço'),
-              ..._buildItens(itens, [
+              ..._buildItens(itensAvaliacao, [
                 'Passadiço – Equipamentos',
                 'Passadiço – Temperatura',
               ]),
 
               /// ================= OUTROS =================
               _secaoTitulo('Outros'),
-              ..._buildItens(itens, [
+              ..._buildItens(itensAvaliacao, [
                 'Dispositivo de Embarque/Desembarque',
                 'Comida',
                 'Relacionamento com comandante/tripulação',
@@ -222,6 +244,9 @@ class AvaliacaoDetalhePage extends StatelessWidget {
     );
   }
 
+  /// -------------------------------------------------------------------------
+  /// HELPERS DE UI
+  /// -------------------------------------------------------------------------
   Widget _secaoTitulo(String titulo) {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 8),
@@ -237,11 +262,16 @@ class AvaliacaoDetalhePage extends StatelessWidget {
   }
 
   List<Widget> _buildItens(
-      Map<String, dynamic> itens, List<String> ordem) {
+    Map<String, dynamic> itens,
+    List<String> ordem,
+  ) {
     return ordem.where(itens.containsKey).map((nome) {
-      final item = Map<String, dynamic>.from(itens[nome]);
-      final nota = item['nota'];
-      final obs = (item['observacao'] ?? '').toString();
+      final Map<String, dynamic> item =
+          Map<String, dynamic>.from(itens[nome]);
+
+      final dynamic nota = item['nota'];
+      final String observacao =
+          (item['observacao'] ?? '').toString();
 
       return Card(
         margin: const EdgeInsets.only(bottom: 10),
@@ -268,9 +298,9 @@ class AvaliacaoDetalhePage extends StatelessWidget {
                   color: Colors.indigo,
                 ),
               ),
-              if (obs.isNotEmpty) ...[
+              if (observacao.isNotEmpty) ...[
                 const Divider(height: 24),
-                Text(obs),
+                Text(observacao),
               ],
             ],
           ),

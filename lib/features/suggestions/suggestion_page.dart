@@ -1,54 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:ship_rate/data/services/sugestao_service.dart';
+import 'package:ship_rate/data/services/suggestion_service.dart';
 
 /// ============================================================================
-/// SugestaoPage
+/// SUGGESTION PAGE
 /// ============================================================================
-class SugestaoPage extends StatefulWidget {
-  const SugestaoPage({super.key});
+/// Tela responsável por permitir que o usuário envie sugestões
+/// e feedbacks para melhoria do aplicativo ShipRate.
+///
+/// A sugestão é enviada utilizando o [SugestaoService].
+class SuggestionPage extends StatefulWidget {
+  const SuggestionPage({super.key});
 
   @override
-  State<SugestaoPage> createState() => _SugestaoPageState();
+  State<SuggestionPage> createState() => _SuggestionPageState();
 }
 
-class _SugestaoPageState extends State<SugestaoPage> {
-  final _emailController = TextEditingController();
-  final _tituloController = TextEditingController();
-  final _mensagemController = TextEditingController();
+class _SuggestionPageState extends State<SuggestionPage> {
+  /// Controllers dos campos de formulário
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
 
-  bool isLoading = false;
+  /// Controle de loading do botão
+  bool _isLoading = false;
 
-  Future<void> _enviar() async {
-    setState(() => isLoading = true);
+  /// --------------------------------------------------------------------------
+  /// Envia a sugestão utilizando o service
+  /// --------------------------------------------------------------------------
+  Future<void> _submitSuggestion() async {
+    setState(() => _isLoading = true);
 
-    final ok = await SugestaoService.enviar(
+    final success = await SugestaoService.enviar(
       email: _emailController.text.trim(),
-      titulo: _tituloController.text.trim(),
-      mensagem: _mensagemController.text.trim(),
+      titulo: _titleController.text.trim(),
+      mensagem: _messageController.text.trim(),
     );
 
-    setState(() => isLoading = false);
+    setState(() => _isLoading = false);
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok
-            ? 'Sugestão enviada com sucesso!'
-            : 'Erro ao enviar sugestão.'),
-        backgroundColor: ok ? Colors.green : Colors.red,
+        content: Text(
+          success
+              ? 'Sugestão enviada com sucesso!'
+              : 'Erro ao enviar sugestão.',
+        ),
+        backgroundColor: success ? Colors.green : Colors.red,
       ),
     );
 
-    if (ok) Navigator.pop(context);
+    if (success) {
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enviar Sugestão',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Enviar Sugestão',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -67,20 +82,22 @@ class _SugestaoPageState extends State<SugestaoPage> {
             ),
             const SizedBox(height: 24),
 
-            _field(
+            _buildField(
               controller: _emailController,
               label: 'Seu e-mail',
               icon: Icons.email_outlined,
             ),
             const SizedBox(height: 16),
-            _field(
-              controller: _tituloController,
+
+            _buildField(
+              controller: _titleController,
               label: 'Título da sugestão',
               icon: Icons.title,
             ),
             const SizedBox(height: 16),
-            _field(
-              controller: _mensagemController,
+
+            _buildField(
+              controller: _messageController,
               label: 'Mensagem',
               icon: Icons.message_outlined,
               maxLines: 5,
@@ -91,14 +108,14 @@ class _SugestaoPageState extends State<SugestaoPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: isLoading ? null : _enviar,
+                onPressed: _isLoading ? null : _submitSuggestion,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: isLoading
+                child: _isLoading
                     ? const SizedBox(
                         width: 22,
                         height: 22,
@@ -122,7 +139,10 @@ class _SugestaoPageState extends State<SugestaoPage> {
     );
   }
 
-  Widget _field({
+  /// --------------------------------------------------------------------------
+  /// Campo padrão de formulário
+  /// --------------------------------------------------------------------------
+  Widget _buildField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
