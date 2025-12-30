@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -34,65 +21,5 @@
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
-
-  <!-- =====================================================================
-       SERVICE WORKER - AUTO-UPDATE
-       =====================================================================
-       Sistema automático de atualização para PWA.
-       
-       Funcionalidades:
-       • Registra Service Worker do Flutter
-       • Verifica atualizações a cada 2 minutos
-       • Detecta quando há nova versão disponível
-       • Força atualização e recarrega app automaticamente
-       
-       Comportamento:
-       1. App detecta nova versão no servidor
-       2. Service Worker baixa código novo em background
-       3. Força ativação do novo Service Worker
-       4. Recarrega página automaticamente após 1 segundo
-       5. Código novo é aplicado
-       
-       Intervalo de verificação: 2 minutos (120000ms)
-       ===================================================================== -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('flutter_service_worker.js')
-          .then((registration) => {
-            // Verifica atualizações a cada 2 minutos
-            setInterval(() => {
-              registration.update();
-            }, 2 * 60 * 1000);
-
-            // Detecta quando há nova versão
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Nova versão disponível - força ativação
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
-                  
-                  // Recarrega página após 1 segundo
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 1000);
-                }
-              });
-            });
-          })
-          .catch((error) => {
-            // Silenciosamente ignora erro de registro
-            // App funcionará normalmente sem Service Worker
-          });
-
-        // Recarrega quando Service Worker é atualizado
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
-        });
-      });
-    }
-  </script>
 </body>
 </html>
