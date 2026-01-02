@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../ratings/add_rating_page.dart';
 import 'rating_detail_page.dart';
+import '../../data/services/marine_traffic_service.dart';
 
 /// ============================================================================
 /// SEARCH & RATE SHIP PAGE
@@ -39,7 +40,7 @@ class _SearchAndRateShipPageState extends State<SearchAndRateShipPage>
           /// -----------------------------
           Container(
             width: double.infinity,
-            color: const Color(0xFFF7F7F9), // fundo leve para evitar "gap branco"
+            color: const Color(0xFFF7F7F9),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,7 +108,7 @@ class _SearchAndRateShipPageState extends State<SearchAndRateShipPage>
             ),
           ),
 
-          /// Linha sutil para "fechar" o topo (some com o gap)
+          /// Linha sutil para "fechar" o topo
           const Divider(height: 1, thickness: 1, color: Color(0xFFE6E6EA)),
 
           /// -----------------------------
@@ -460,6 +461,49 @@ class _ShipSummaryCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            /// BOTÃO MARINETRAFFIC
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final success = await MarineTrafficService.openMarineTraffic(
+                    shipName: data['nome'],
+                    imo: data['imo'],
+                  );
+
+                  if (!success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Não foi possível abrir MarineTraffic'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.waves, size: 20),
+                label: const Text(
+                  'Ver Detalhes no MarineTraffic',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ),
 

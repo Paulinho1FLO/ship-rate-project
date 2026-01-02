@@ -6,7 +6,7 @@ import 'rating_controller.dart';
 /// ============================================================================
 /// ADD RATING PAGE
 /// ============================================================================
-/// Tela de cadastro de avaliação de navio.
+/// Tela de cadastro de avaliação de navio com design profissional.
 ///
 /// Responsabilidades:
 /// ------------------
@@ -20,21 +20,12 @@ import 'rating_controller.dart';
 /// ----------------
 /// • Autocomplete inteligente com highlight de caracteres coincidentes
 /// • Campos bloqueados automaticamente quando navio existe
-/// • Slider para notas (1.0 a 5.0 com incrementos de 0.1)
+/// • Slider para notas (1.0 a 5.0 com incrementos de 0.5)
+/// • Design moderno com cards e ícones
 /// • Validação de campos obrigatórios
 /// • Persistência via RatingController
 ///
-/// Fluxo de Uso:
-/// -------------
-/// 1. Usuário digita nome do navio (autocomplete sugere opções)
-/// 2. Se navio existe: campos de info são bloqueados e preenchidos
-/// 3. Se navio novo: todos os campos ficam habilitados
-/// 4. Preenche tipo de cabine, data de desembarque, notas por critério
-/// 5. Salva via RatingController
-/// 6. Retorna para tela anterior com resultado true
-///
 class AddRatingPage extends StatefulWidget {
-  /// IMO do navio (opcional, pode ser vazio)
   final String imo;
 
   const AddRatingPage({
@@ -50,10 +41,7 @@ class AddRatingPage extends StatefulWidget {
 /// ADD RATING PAGE STATE
 /// ============================================================================
 class _AddRatingPageState extends State<AddRatingPage> {
-  /// Form key para validação
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  /// Controller de lógica de negócio
   final RatingController _ratingController = RatingController();
 
   /// --------------------------------------------------------------------------
@@ -61,46 +49,26 @@ class _AddRatingPageState extends State<AddRatingPage> {
   /// --------------------------------------------------------------------------
   final TextEditingController _shipNameController = TextEditingController();
   final TextEditingController _imoController = TextEditingController();
-  final TextEditingController _generalObservationController =
-      TextEditingController();
-  final TextEditingController _crewNationalityController =
-      TextEditingController();
+  final TextEditingController _generalObservationController = TextEditingController();
+  final TextEditingController _crewNationalityController = TextEditingController();
   final TextEditingController _cabinCountController = TextEditingController();
-
-  /// FocusNode persistente para evitar bugs no autocomplete
   final FocusNode _shipNameFocusNode = FocusNode();
 
   /// --------------------------------------------------------------------------
   /// Estado local
   /// --------------------------------------------------------------------------
-  
-  /// Lista de navios cadastrados (para autocomplete)
   List<QueryDocumentSnapshot> _registeredShips = [];
-
-  /// Nome atual do navio sendo digitado
   String _currentShipName = '';
-
-  /// Tipo de cabine selecionado
   String? _selectedCabinType;
-
-  /// Data de desembarque selecionada
   DateTime? _disembarkationDate;
-
-  /// Checkbox states
   bool _hasMinibar = false;
   bool _hasSink = false;
-
-  /// Loading state
   bool _isSaving = false;
-
-  /// Se navio já existe no banco (campos ficam bloqueados)
   bool _shipAlreadyExists = false;
 
   /// --------------------------------------------------------------------------
   /// Constantes
   /// --------------------------------------------------------------------------
-  
-  /// Tipos de cabine disponíveis
   static const List<String> _cabinTypes = [
     'PRT',
     'OWNER',
@@ -108,22 +76,46 @@ class _AddRatingPageState extends State<AddRatingPage> {
     'Crew',
   ];
 
-  /// Itens avaliados (ordem oficial do sistema)
-  static const List<String> _ratingCriteria = [
-    'Dispositivo de Embarque/Desembarque',
-    'Temperatura da Cabine',
-    'Limpeza da Cabine',
-    'Passadiço – Equipamentos',
-    'Passadiço – Temperatura',
-    'Comida',
-    'Relacionamento com comandante/tripulação',
+  /// Itens avaliados com ícones e cores
+  static const List<Map<String, dynamic>> _ratingCriteria = [
+    {
+      'key': 'Dispositivo de Embarque/Desembarque',
+      'icon': Icons.transfer_within_a_station,
+      'color': Color(0xFF3F51B5),
+    },
+    {
+      'key': 'Temperatura da Cabine',
+      'icon': Icons.thermostat,
+      'color': Color(0xFFE91E63),
+    },
+    {
+      'key': 'Limpeza da Cabine',
+      'icon': Icons.cleaning_services,
+      'color': Color(0xFF4CAF50),
+    },
+    {
+      'key': 'Passadiço – Equipamentos',
+      'icon': Icons.control_camera,
+      'color': Color(0xFFFF9800),
+    },
+    {
+      'key': 'Passadiço – Temperatura',
+      'icon': Icons.device_thermostat,
+      'color': Color(0xFF9C27B0),
+    },
+    {
+      'key': 'Comida',
+      'icon': Icons.restaurant,
+      'color': Color(0xFFF44336),
+    },
+    {
+      'key': 'Relacionamento com comandante/tripulação',
+      'icon': Icons.handshake,
+      'color': Color(0xFF00BCD4),
+    },
   ];
 
-  /// --------------------------------------------------------------------------
-  /// Maps de notas e observações por critério
-  /// --------------------------------------------------------------------------
-  
-  /// Notas por item (1.0 a 5.0, padrão 3.0)
+  /// Notas por item (1.0 a 5.0, padrão 3.0, incrementos de 0.5)
   late final Map<String, double> _ratingsByItem;
 
   /// Controllers de observações por item
@@ -135,18 +127,15 @@ class _AddRatingPageState extends State<AddRatingPage> {
   @override
   void initState() {
     super.initState();
-
-    /// Carrega navios cadastrados para autocomplete
     _loadShips();
 
-    /// Inicializa notas com valor padrão 3.0
     _ratingsByItem = {
-      for (final item in _ratingCriteria) item: 3.0,
+      for (final item in _ratingCriteria) item['key'] as String: 3.0,
     };
 
-    /// Inicializa controllers de observações
     _observationControllers = {
-      for (final item in _ratingCriteria) item: TextEditingController(),
+      for (final item in _ratingCriteria) 
+        item['key'] as String: TextEditingController(),
     };
   }
 
@@ -154,14 +143,9 @@ class _AddRatingPageState extends State<AddRatingPage> {
   /// Carrega navios para autocomplete
   /// --------------------------------------------------------------------------
   Future<void> _loadShips() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('navios').get();
-
+    final snapshot = await FirebaseFirestore.instance.collection('navios').get();
     if (!mounted) return;
-
-    setState(() {
-      _registeredShips = snapshot.docs;
-    });
+    setState(() => _registeredShips = snapshot.docs);
   }
 
   /// --------------------------------------------------------------------------
@@ -176,7 +160,6 @@ class _AddRatingPageState extends State<AddRatingPage> {
     _crewNationalityController.dispose();
     _cabinCountController.dispose();
 
-    /// Dispose de todos os controllers de observações
     for (final controller in _observationControllers.values) {
       controller.dispose();
     }
@@ -187,14 +170,6 @@ class _AddRatingPageState extends State<AddRatingPage> {
   /// --------------------------------------------------------------------------
   /// Destaca caracteres coincidentes no autocomplete
   /// --------------------------------------------------------------------------
-  /// Aplica negrito nos caracteres que coincidem com a busca.
-  ///
-  /// Parâmetros:
-  ///   • [text] - Texto completo a ser exibido
-  ///   • [query] - Texto digitado pelo usuário
-  ///
-  /// Retorno:
-  ///   • TextSpan com caracteres coincidentes em negrito
   TextSpan _highlightMatch(String text, String query) {
     if (query.isEmpty) return TextSpan(text: text);
 
@@ -216,19 +191,6 @@ class _AddRatingPageState extends State<AddRatingPage> {
   /// --------------------------------------------------------------------------
   /// Salva avaliação
   /// --------------------------------------------------------------------------
-  /// Valida formulário e persiste dados via RatingController.
-  ///
-  /// Validações:
-  ///   • Campos obrigatórios preenchidos
-  ///   • Data de desembarque selecionada
-  ///   • Tipo de cabine selecionado
-  ///
-  /// Fluxo:
-  ///   1. Valida formulário
-  ///   2. Ativa loading
-  ///   3. Chama RatingController.salvarAvaliacao
-  ///   4. Retorna para tela anterior com resultado true
-  ///   5. Em caso de erro, mantém usuário na tela
   Future<void> _saveRating() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -236,6 +198,7 @@ class _AddRatingPageState extends State<AddRatingPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Preencha todos os campos obrigatórios'),
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -258,16 +221,14 @@ class _AddRatingPageState extends State<AddRatingPage> {
         },
         itens: {
           for (final item in _ratingCriteria)
-            item: {
-              'nota': _ratingsByItem[item]!,
-              'observacao': _observationControllers[item]!.text.trim(),
+            item['key'] as String: {
+              'nota': _ratingsByItem[item['key']]!,
+              'observacao': _observationControllers[item['key']]!.text.trim(),
             }
         },
       );
 
       if (!mounted) return;
-
-      /// Retorna com resultado true indicando sucesso
       Navigator.pop(context, true);
     } finally {
       if (mounted) {
@@ -285,6 +246,16 @@ class _AddRatingPageState extends State<AddRatingPage> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF3F51B5),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -298,55 +269,454 @@ class _AddRatingPageState extends State<AddRatingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
-        title: const Text('Avaliar Navio'),
-        backgroundColor: Colors.indigo,
+        title: const Text(
+          'Avaliar Navio',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF3F51B5),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
 
-      /// Botão fixo na parte inferior
-      bottomNavigationBar: Padding(
+      bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
-        child: ElevatedButton(
-          onPressed: _isSaving ? null : _saveRating,
-          child: Text(_isSaving ? 'Salvando...' : 'Salvar Avaliação'),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _saveRating,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3F51B5),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'Salvar Avaliação',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
         ),
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildShipAutocomplete(),
-              const SizedBox(height: 12),
-              _buildImoField(),
-              const Divider(height: 32),
-              _buildCabinTypeDropdown(),
-              const SizedBox(height: 16),
-              _buildDisembarkationDatePicker(),
-              const Divider(height: 32),
-              _buildShipInfoSection(),
-              const Divider(height: 32),
-              
-              /// Lista de critérios avaliados
-              for (final item in _ratingCriteria) _buildRatingItem(item),
-              
-              const Divider(height: 32),
-              _buildGeneralObservationField(),
-            ],
-          ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildShipInfoCard(),
+            const SizedBox(height: 16),
+            _buildEvaluationDetailsCard(),
+            const SizedBox(height: 16),
+            _buildRatingsHeader(),
+            const SizedBox(height: 12),
+            ..._buildRatingItems(),
+            const SizedBox(height: 16),
+            _buildGeneralObservationCard(),
+            const SizedBox(height: 80),
+          ],
         ),
       ),
     );
   }
 
   /// --------------------------------------------------------------------------
-  /// Widgets auxiliares
+  /// Card de informações do navio
   /// --------------------------------------------------------------------------
+  Widget _buildShipInfoCard() {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.directions_boat, color: Color(0xFF3F51B5), size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'Dados do Navio',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildShipAutocomplete(),
+            const SizedBox(height: 16),
+            _buildImoField(),
+            const SizedBox(height: 20),
+            const Divider(height: 1),
+            const SizedBox(height: 20),
+            Row(
+              children: const [
+                Icon(Icons.info_outline, color: Color(0xFF3F51B5), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Informações Adicionais',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _crewNationalityController,
+              enabled: !_shipAlreadyExists,
+              decoration: InputDecoration(
+                labelText: 'Nacionalidade da tripulação',
+                prefixIcon: const Icon(Icons.flag, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: _shipAlreadyExists ? Colors.grey[100] : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _cabinCountController,
+              enabled: !_shipAlreadyExists,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Quantidade de cabines',
+                prefixIcon: const Icon(Icons.bed, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: _shipAlreadyExists ? Colors.grey[100] : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[300]!),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Possui frigobar'),
+                    secondary: const Icon(Icons.kitchen, color: Color(0xFF3F51B5)),
+                    value: _hasMinibar,
+                    activeColor: const Color(0xFF3F51B5),
+                    onChanged: _shipAlreadyExists
+                        ? null
+                        : (v) => setState(() => _hasMinibar = v),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    title: const Text('Possui pia'),
+                    secondary: const Icon(Icons.water_drop, color: Color(0xFF3F51B5)),
+                    value: _hasSink,
+                    activeColor: const Color(0xFF3F51B5),
+                    onChanged: _shipAlreadyExists
+                        ? null
+                        : (v) => setState(() => _hasSink = v),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  /// --------------------------------------------------------------------------
+  /// Card de detalhes da avaliação
+  /// --------------------------------------------------------------------------
+  Widget _buildEvaluationDetailsCard() {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.assignment, color: Color(0xFF3F51B5), size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'Detalhes da Avaliação',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildCabinTypeDropdown(),
+            const SizedBox(height: 16),
+            _buildDisembarkationDatePicker(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// --------------------------------------------------------------------------
+  /// Header das avaliações
+  /// --------------------------------------------------------------------------
+  Widget _buildRatingsHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: const [
+          Icon(Icons.star, color: Color(0xFF3F51B5), size: 24),
+          SizedBox(width: 12),
+          Text(
+            'Avaliações por Critério',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF3F51B5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// --------------------------------------------------------------------------
+  /// Constrói lista de itens de avaliação
+  /// --------------------------------------------------------------------------
+  List<Widget> _buildRatingItems() {
+    return _ratingCriteria.map((criteria) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildRatingItem(
+          criteria['key'] as String,
+          criteria['icon'] as IconData,
+          criteria['color'] as Color,
+        ),
+      );
+    }).toList();
+  }
+
+  /// --------------------------------------------------------------------------
+  /// Item individual de avaliação
+  /// --------------------------------------------------------------------------
+  Widget _buildRatingItem(String item, IconData icon, Color color) {
+    final valor = _ratingsByItem[item]!;
+    
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(26),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text(
+                  '1.0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: color,
+                      inactiveTrackColor: color.withAlpha(51),
+                      thumbColor: color,
+                      overlayColor: color.withAlpha(51),
+                      valueIndicatorColor: color,
+                      valueIndicatorTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: Slider(
+                      value: valor,
+                      min: 1,
+                      max: 5,
+                      divisions: 8,
+                      label: valor.toStringAsFixed(1),
+                      onChanged: (v) => setState(() => _ratingsByItem[item] = v),
+                    ),
+                  ),
+                ),
+                const Text(
+                  '5.0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: color.withAlpha(26),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.star, color: color, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    valor.toStringAsFixed(1),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _observationControllers[item],
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Observações sobre ${item.toLowerCase()}...',
+                hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: color, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// --------------------------------------------------------------------------
+  /// Card de observação geral
+  /// --------------------------------------------------------------------------
+  Widget _buildGeneralObservationCard() {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.notes, color: Color(0xFF3F51B5), size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'Observação Geral',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _generalObservationController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: 'Comentários adicionais sobre a experiência geral no navio...',
+                hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// --------------------------------------------------------------------------
   /// Autocomplete de nome do navio
+  /// --------------------------------------------------------------------------
   Widget _buildShipAutocomplete() {
     return RawAutocomplete<QueryDocumentSnapshot>(
       textEditingController: _shipNameController,
@@ -366,7 +736,15 @@ class _AddRatingPageState extends State<AddRatingPage> {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
-          decoration: const InputDecoration(labelText: 'Nome do navio'),
+          decoration: InputDecoration(
+            labelText: 'Nome do navio',
+            prefixIcon: const Icon(Icons.directions_boat, size: 20),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
           validator: (v) =>
               v == null || v.isEmpty ? 'Informe o nome do navio' : null,
           onChanged: (v) {
@@ -381,7 +759,7 @@ class _AddRatingPageState extends State<AddRatingPage> {
         }
 
         return Material(
-          elevation: 4,
+          elevation: 8,
           borderRadius: BorderRadius.circular(12),
           child: ListView.builder(
             padding: EdgeInsets.zero,
@@ -392,7 +770,17 @@ class _AddRatingPageState extends State<AddRatingPage> {
               final info = (data['info'] ?? {}) as Map<String, dynamic>;
 
               return ListTile(
-                leading: const Icon(Icons.directions_boat),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3F51B5).withAlpha(26),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.directions_boat,
+                    color: Color(0xFF3F51B5),
+                  ),
+                ),
                 title: RichText(
                   text: _highlightMatch(
                     data['nome'],
@@ -424,20 +812,40 @@ class _AddRatingPageState extends State<AddRatingPage> {
     );
   }
 
-  /// Campo de IMO (bloqueado se navio já existe)
+  /// --------------------------------------------------------------------------
+  /// Campo de IMO
+  /// --------------------------------------------------------------------------
   Widget _buildImoField() {
     return TextFormField(
       controller: _imoController,
       enabled: !_shipAlreadyExists,
-      decoration: const InputDecoration(labelText: 'IMO (opcional)'),
+      decoration: InputDecoration(
+        labelText: 'IMO (opcional)',
+        prefixIcon: const Icon(Icons.numbers, size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: _shipAlreadyExists ? Colors.grey[100] : Colors.white,
+      ),
     );
   }
 
+  /// --------------------------------------------------------------------------
   /// Dropdown de tipo de cabine
+  /// --------------------------------------------------------------------------
   Widget _buildCabinTypeDropdown() {
     return DropdownButtonFormField<String>(
       value: _selectedCabinType,
-      decoration: const InputDecoration(labelText: 'Tipo da cabine'),
+      decoration: InputDecoration(
+        labelText: 'Tipo da cabine',
+        prefixIcon: const Icon(Icons.bed, size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
       items: _cabinTypes
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
@@ -445,103 +853,47 @@ class _AddRatingPageState extends State<AddRatingPage> {
     );
   }
 
+  /// --------------------------------------------------------------------------
   /// Seletor de data de desembarque
+  /// --------------------------------------------------------------------------
   Widget _buildDisembarkationDatePicker() {
-    return ListTile(
-      leading: const Icon(Icons.event),
-      title: const Text('Data de desembarque'),
-      subtitle: Text(
-        _disembarkationDate == null
-            ? 'Selecionar'
-            : '${_disembarkationDate!.day}/${_disembarkationDate!.month}/${_disembarkationDate!.year}',
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(12),
       ),
-      onTap: _selectDisembarkationDate,
-    );
-  }
-
-  /// Seção de informações do navio
-  Widget _buildShipInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Informações do navio',
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF3F51B5).withAlpha(26),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.event,
+            color: Color(0xFF3F51B5),
+          ),
+        ),
+        title: const Text(
+          'Data de desembarque',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text(
+          _disembarkationDate == null
+              ? 'Toque para selecionar'
+              : '${_disembarkationDate!.day.toString().padLeft(2, '0')}/${_disembarkationDate!.month.toString().padLeft(2, '0')}/${_disembarkationDate!.year}',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.indigo,
+            color: _disembarkationDate == null
+                ? Colors.grey
+                : const Color(0xFF3F51B5),
+            fontWeight: _disembarkationDate == null
+                ? FontWeight.normal
+                : FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _crewNationalityController,
-          enabled: !_shipAlreadyExists,
-          decoration: const InputDecoration(
-            labelText: 'Nacionalidade da tripulação',
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _cabinCountController,
-          enabled: !_shipAlreadyExists,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Quantidade de cabines',
-          ),
-        ),
-        SwitchListTile(
-          title: const Text('Possui frigobar'),
-          value: _hasMinibar,
-          onChanged: _shipAlreadyExists
-              ? null
-              : (v) => setState(() => _hasMinibar = v),
-        ),
-        SwitchListTile(
-          title: const Text('Possui pia'),
-          value: _hasSink,
-          onChanged:
-              _shipAlreadyExists ? null : (v) => setState(() => _hasSink = v),
-        ),
-      ],
-    );
-  }
-
-  /// Item individual de avaliação (slider + observação)
-  Widget _buildRatingItem(String item) {
-    final valor = _ratingsByItem[item]!;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Slider(
-              value: valor,
-              min: 1,
-              max: 5,
-              divisions: 40,
-              label: valor.toStringAsFixed(1),
-              onChanged: (v) => setState(() => _ratingsByItem[item] = v),
-            ),
-            TextField(
-              controller: _observationControllers[item],
-              decoration: const InputDecoration(
-                hintText: 'Observação (opcional)',
-              ),
-            ),
-          ],
-        ),
+        trailing: const Icon(Icons.chevron_right, color: Color(0xFF3F51B5)),
+        onTap: _selectDisembarkationDate,
       ),
-    );
-  }
-
-  /// Campo de observação geral
-  Widget _buildGeneralObservationField() {
-    return TextFormField(
-      controller: _generalObservationController,
-      maxLines: 4,
-      decoration: const InputDecoration(labelText: 'Observação geral'),
     );
   }
 }
