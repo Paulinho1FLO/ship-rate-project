@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
+import '../../data/services/pdf_service.dart';
 /// ============================================================================
 /// RATING DETAIL PAGE
 /// ============================================================================
@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 /// • Lista informações da cabine
 /// • Exibe avaliações por categoria com notas
 /// • Mostra observações gerais
+/// • Exporta avaliação para PDF (mobile + web)
 ///
 /// Características:
 /// ----------------
@@ -21,6 +22,7 @@ import 'package:flutter/material.dart';
 /// • Busca dados do navio no documento pai
 /// • Agrupa critérios por categoria (Cabine, Passadiço, Outros)
 /// • Layout limpo e profissional com Cards
+/// • Botão de exportação PDF no AppBar
 ///
 /// Estrutura de Dados:
 /// -------------------
@@ -47,6 +49,102 @@ class RatingDetailPage extends StatelessWidget {
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
+
+  /// --------------------------------------------------------------------------
+/// Exporta avaliação para PDF
+/// --------------------------------------------------------------------------
+/// Funciona em mobile (compartilha) e web (download automático)
+Future<void> _exportToPdf(BuildContext context, String shipName, String? shipImo) async {
+  try {
+    // Mostra loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          color: Colors.indigo,
+        ),
+      ),
+    );
+
+    final data = rating.data() as Map<String, dynamic>;
+
+    // Extrai dados da avaliação
+    final evaluatorName = data['nomeGuerra'] ?? 'Anônimo';
+    
+    // Resolve data da avaliação (createdAt ou data legado)
+    final evaluationDate = (data['createdAt'] as Timestamp?)?.toDate() ?? 
+                          (data['data'] as Timestamp?)?.toDate() ?? 
+                          DateTime.now();
+    
+    final cabinType = data['tipoCabine'] ?? 'N/A';
+    final disembarkationDate = (data['dataDesembarque'] as Timestamp).toDate();
+    
+    // Converte itens para formato esperado pelo PDF
+    final itensData = data['itens'] as Map<String, dynamic>? ?? {};
+    final ratings = <String, Map<String, dynamic>>{};
+    
+    itensData.forEach((key, value) {
+      if (value is Map<String, dynamic>) {
+        ratings[key] = {
+          'nota': (value['nota'] as num?)?.toDouble() ?? 0.0,
+          'observacao': value['observacao'] ?? '',
+        };
+      }
+    });
+    
+    final generalObservation = data['observacaoGeral'];
+    final shipInfo = data['infoNavio'] as Map<String, dynamic>?;
+
+    // Gera PDF
+    final pdf = await PdfService.generateRatingPdf(
+      shipName: shipName,
+      shipImo: shipImo,
+      evaluatorName: evaluatorName,
+      evaluationDate: evaluationDate,
+      cabinType: cabinType,
+      disembarkationDate: disembarkationDate,
+      ratings: ratings,
+      generalObservation: generalObservation,
+      shipInfo: shipInfo,
+    );
+
+    // Fecha loading
+    if (context.mounted) {
+      Navigator.pop(context);
+    }
+
+    // Nome do arquivo - SIMPLIFICADO
+    final primeiroNome = shipName.split(' ').first.replaceAll(RegExp(r'[^\w]'), '');
+    final fileName = 'ShipRate_$primeiroNome';
+
+    // Salva e compartilha (mobile) ou faz download (web)
+    await PdfService.saveAndSharePdf(pdf, fileName);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF gerado com sucesso!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  } catch (e) {
+    // Fecha loading se ainda estiver aberto
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao gerar PDF: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
 
   /// --------------------------------------------------------------------------
   /// Build principal
@@ -100,6 +198,14 @@ class RatingDetailPage extends StatelessWidget {
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             centerTitle: true,
+            actions: [
+              // Botão de exportar PDF no AppBar
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf),
+                tooltip: 'Exportar PDF',
+                onPressed: () => _exportToPdf(context, shipName, imo),
+              ),
+            ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),
@@ -224,19 +330,22 @@ class RatingDetailPage extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: const Text(
-                      'Observações Gerais',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.indigo,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Observações Gerais',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.indigo,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(generalObservations),
+                      ],
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(generalObservations),
                 ),
               ],
 
@@ -269,7 +378,20 @@ class RatingDetailPage extends StatelessWidget {
                 'Comida',
                 'Relacionamento com comandante/tripulação',
               ]),
+
+              const SizedBox(height: 32),
             ],
+          ),
+
+          /// ---------------------------------------------------------------
+          /// Botão flutuante de exportar PDF (alternativa ao AppBar)
+          /// ---------------------------------------------------------------
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _exportToPdf(context, shipName, imo),
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.picture_as_pdf),
+            label: const Text('Exportar PDF'),
           ),
         );
       },

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'rating_detail_page.dart';
+import '../../data/services/pdf_service.dart';
 
 /// ============================================================================
 /// MY RATINGS PAGE
@@ -17,6 +18,7 @@ import 'rating_detail_page.dart';
 /// • Busca distribuída (percorre todos os navios)
 /// • Pull-to-refresh para recarregar dados
 /// • Tratamento robusto de erros
+/// • Exportação rápida de avaliações para PDF
 ///
 /// Lógica de Busca:
 /// ----------------
@@ -238,6 +240,94 @@ class _MyRatingsPageState extends State<MyRatingsPage> {
 
     return count > 0 ? total / count : 0.0;
   }
+
+  /// --------------------------------------------------------------------------
+/// Exporta avaliação para PDF (atalho rápido)
+/// --------------------------------------------------------------------------
+Future<void> _exportRatingToPdf(_RatingItem item) async {
+  try {
+    // Mostra loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF3F51B5),
+        ),
+      ),
+    );
+
+    final data = item.rating.data() as Map<String, dynamic>;
+
+    // Extrai dados
+    final evaluatorName = data['nomeGuerra'] ?? 'Anônimo';
+    final evaluationDate = (data['createdAt'] as Timestamp?)?.toDate() ?? 
+                          (data['data'] as Timestamp?)?.toDate() ?? 
+                          DateTime.now();
+    final cabinType = data['tipoCabine'] ?? 'N/A';
+    final disembarkationDate = (data['dataDesembarque'] as Timestamp).toDate();
+    
+    final itensData = data['itens'] as Map<String, dynamic>? ?? {};
+    final ratings = <String, Map<String, dynamic>>{};
+    
+    itensData.forEach((key, value) {
+      if (value is Map<String, dynamic>) {
+        ratings[key] = {
+          'nota': (value['nota'] as num?)?.toDouble() ?? 0.0,
+          'observacao': value['observacao'] ?? '',
+        };
+      }
+    });
+    
+    final generalObservation = data['observacaoGeral'];
+    final shipInfo = data['infoNavio'] as Map<String, dynamic>?;
+
+    // Gera PDF
+    final pdf = await PdfService.generateRatingPdf(
+      shipName: item.shipName,
+      shipImo: item.shipImo.isNotEmpty ? item.shipImo : null,
+      evaluatorName: evaluatorName,
+      evaluationDate: evaluationDate,
+      cabinType: cabinType,
+      disembarkationDate: disembarkationDate,
+      ratings: ratings,
+      generalObservation: generalObservation,
+      shipInfo: shipInfo,
+    );
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+
+    // Nome do arquivo - SIMPLIFICADO
+    final primeiroNome = item.shipName.split(' ').first.replaceAll(RegExp(r'[^\w]'), '');
+    final fileName = 'ShipRate_$primeiroNome';
+    
+    await PdfService.saveAndSharePdf(pdf, fileName);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF gerado com sucesso!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao gerar PDF: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
 
   /// --------------------------------------------------------------------------
   /// Build principal
@@ -553,6 +643,40 @@ class _MyRatingsPageState extends State<MyRatingsPage> {
                                 color: const Color(0xFF4CAF50),
                               ),
                             ],
+
+                            /// Botão de exportar PDF
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () => _exportRatingToPdf(item),
+                                  icon: const Icon(
+                                    Icons.picture_as_pdf,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
+                                  label: const Text(
+                                    'Exportar PDF',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    backgroundColor: Colors.red.withAlpha(26),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

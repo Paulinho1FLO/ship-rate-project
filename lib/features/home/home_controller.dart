@@ -100,7 +100,6 @@ class MainScreenController {
   /// await FirebaseAuth.instance.signOut();
   /// ```
   Future<void> logout() async {
-    // TODO: Implementar logout via AuthController
     // await FirebaseAuth.instance.signOut();
   }
 }
